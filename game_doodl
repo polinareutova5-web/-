@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vocabulary Jump — Учим числа!</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    overflow: hidden;
+    background: #0a0a2e;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none;
+  }
+
+  canvas { display: block; }
+
+  /* ─── Стартовый экран ─── */
+  #startScreen, #endScreen {
+    position: fixed; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: linear-gradient(135deg, #0a0a2e 0%, #1a1a4e 50%, #0d0d3d 100%);
+    z-index: 100;
+    color: #fff;
+    text-align: center;
+  }
+
+  #startScreen h1 {
+    font-size: 3em;
+    background: linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 10px;
+    text-shadow: none;
+  }
+
+  #startScreen .subtitle {
+    font-size: 1.2em;
+    color: #aab;
+    margin-bottom: 30px;
+  }
+
+  #startScreen .rules {
+    max-width: 500px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 30px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+
+  #startScreen .rules p {
+    margin: 8px 0;
+    font-size: 1em;
+    color: #ccd;
+  }
+
+  #startScreen .rules span.emoji {
+    font-size: 1.3em;
+  }
+
+  .btn {
+    padding: 16px 48px;
+    font-size: 1.3em;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+  }
+
+  .btn-start {
+    background: linear-gradient(135deg, #6bcb77, #4d96ff);
+    color: #fff;
+    box-shadow: 0 8px 30px rgba(75, 150, 255, 0.4);
+  }
+
+  .btn-start:hover {
+    transform: scale(1.08);
+    box-shadow: 0 12px 40px rgba(75, 150, 255, 0.6);
+  }
+
+  .btn-restart {
+    background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+    color: #fff;
+    box-shadow: 0 8px 30px rgba(255, 107, 107, 0.4);
+  }
+
+  .btn-restart:hover {
+    transform: scale(1.08);
+  }
+
+  /* ─── HUD ─── */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.7) 0%, transparent 100%);
+    z-index: 50;
+    color: #fff;
+    font-size: 1.1em;
+  }
+
+  #hud .score {
+    background: rgba(255,255,255,0.1);
+    padding: 8px 20px;
+    border-radius: 30px;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  #hud .height {
+    background: rgba(255,255,255,0.1);
+    padding: 8px 20px;
+    border-radius: 30px;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+
+  /* ─── Панель вопроса ─── */
+  #questionPanel {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 550px;
+    background: rgba(15, 15, 50, 0.95);
+    border-radius: 20px;
+    padding: 24px;
+    z-index: 60;
+    border: 2px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    transition: all 0.4s ease;
+  }
+
+  #questionPanel.hidden {
+    transform: translateX(-50%) translateY(200px);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #questionText {
+    color: #fff;
+    font-size: 1.25em;
+    text-align: center;
+    margin-bottom: 18px;
+    line-height: 1.5;
+  }
+
+  #questionText .word {
+    color: #ffd93d;
+    font-weight: bold;
+    font-size: 1.3em;
+  }
+
+  #answers {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .answer-btn {
+    padding: 14px 10px;
+    font-size: 1.1em;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.05);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 600;
+  }
+
+  .answer-btn:hover {
+    background: rgba(255,255,255,0.15);
+    border-color: #4d96ff;
+    transform: scale(1.03);
+  }
+
+  .answer-btn.correct {
+    background: rgba(107, 203, 119, 0.5) !important;
+    border-color: #6bcb77 !important;
+    animation: popCorrect 0.4s ease;
+  }
+
+  .answer-btn.wrong {
+    background: rgba(255, 107, 107, 0.5) !important;
+    border-color: #ff6b6b !important;
+    animation: shake 0.4s ease;
+  }
+
+  @keyframes popCorrect {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-8px); }
+    75% { transform: translateX(8px); }
+  }
+
+  /* ─── Экран конца ─── */
+  #endScreen { display: none; }
+  #endScreen h2 { font-size: 2.5em; margin-bottom: 10px; }
+  #endScreen .final-score { font-size: 1.8em; color: #ffd93d; margin-bottom: 8px; }
+  #endScreen .final-height { font-size: 1.2em; color: #aab; margin-bottom: 30px; }
+  #endScreen .message { font-size: 1.1em; color: #ccd; margin-bottom: 20px; }
+
+  /* ─── Звёзды фона ─── */
+  .star {
+    position: fixed;
+    background: #fff;
+    border-radius: 50%;
+    animation: twinkle var(--dur) ease-in-out infinite alternate;
+  }
+
+  @keyframes twinkle {
+    0% { opacity: 0.2; }
+    100% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Стартовый экран -->
+<div id="startScreen">
+  <h1>🚀 Vocabulary Jump</h1>
+  <p class="subtitle">Учи английские числа — прыгай выше!</p>
+  <div class="rules">
+    <p><span class="emoji">🧑‍🚀</span> Ты — мальчик-чужестранец из далёкой галактики</p>
+    <p><span class="emoji">📝</span> Отвечай правильно на вопросы про числа</p>
+    <p><span class="emoji">⬆️</span> Каждый правильный ответ = прыжок вверх!</p>
+    <p><span class="emoji">💀</span> Ошибка = падение вниз</p>
+    <p><span class="emoji">🏆</span> Как высоко ты сможешь забраться?</p>
+  </div>
+  <button class="btn btn-start" onclick="startGame()">Играть!</button>
+</div>
+
+<!-- Экран конца -->
+<div id="endScreen">
+  <h2>🛸 Игра окончена!</h2>
+  <p class="final-score" id="finalScore">0 правильных</p>
+  <p class="final-height" id="finalHeight">Высота: 0 м</p>
+  <p class="message" id="endMessage"></p>
+  <button class="btn btn-restart" onclick="startGame()">Ещё раз!</button>
+</div>
+
+<!-- HUD -->
+<div id="hud" style="display:none;">
+  <div class="score">⭐ Правильно: <b id="scoreVal">0</b></div>
+  <div class="height">📏 Высота: <b id="heightVal">0</b> м</div>
+</div>
+
+<!-- Панель вопроса -->
+<div id="questionPanel" class="hidden">
+  <div id="questionText"></div>
+  <div id="answers"></div>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+// ═══════════════════════════════════════════
+//  ДАННЫЕ — СЛОВАРЬ ЧИСЕЛ
+// ═══════════════════════════════════════════
+const VOCAB = [
+  // Количественные
+  { ru: "один",      en: "one",       type: "quant" },
+  { ru: "два",       en: "two",       type: "quant" },
+  { ru: "три",       en: "three",     type: "quant" },
+  { ru: "четыре",    en: "four",      type: "quant" },
+  { ru: "пять",      en: "five",      type: "quant" },
+  { ru: "шесть",     en: "six",       type: "quant" },
+  { ru: "семь",      en: "seven",     type: "quant" },
+  { ru: "восемь",    en: "eight",     type: "quant" },
+  { ru: "девять",    en: "nine",      type: "quant" },
+  { ru: "десять",    en: "ten",       type: "quant" },
+  { ru: "одиннадцать", en: "eleven",  type: "quant" },
+  { ru: "двенадцать",  en: "twelve",  type: "quant" },
+  { ru: "тринадцать",  en: "thirteen",type: "quant" },
+  { ru: "четырнадцать",en: "fourteen",type: "quant" },
+  { ru: "пятнадцать",  en: "fifteen", type: "quant" },
+  { ru: "двадцать",    en: "twenty",  type: "quant" },
+  { ru: "тридцать",    en: "thirty",  type: "quant" },
+  { ru: "сорок",       en: "forty",   type: "quant" },
+  { ru: "пятьдесят",   en: "fifty",   type: "quant" },
+  { ru: "сто",         en: "hundred", type: "quant" },
+  { ru: "тысяча",      en: "thousand",type: "quant" },
+  { ru: "миллион",     en: "million", type: "quant" },
+  { ru: "ноль",        en: "zero",    type: "quant" },
+
+  // Порядковые
+  { ru: "первый",     en: "first",    type: "ord" },
+  { ru: "второй",     en: "second",   type: "ord" },
+  { ru: "третий",     en: "third",    type: "ord" },
+  { ru: "четвёртый",  en: "fourth",   type: "ord" },
+  { ru: "пятый",      en: "fifth",    type: "ord" },
+  { ru: "шестой",     en: "sixth",    type: "ord" },
+  { ru: "седьмой",    en: "seventh",  type: "ord" },
+  { ru: "восьмой",    en: "eighth",   type: "ord" },
+  { ru: "девятый",    en: "ninth",    type: "ord" },
+  { ru: "десятый",    en: "tenth",    type: "ord" },
+  { ru: "двадцатый",  en: "twentieth",type: "ord" },
+  { ru: "сотый",      en: "hundredth",type: "ord" },
+];
+
+// ═══════════════════════════════════════════
+//  CANVAS & ПЕРЕМЕННЫЕ
+// ═══════════════════════════════════════════
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// Игровое состояние
+let gameRunning = false;
+let score = 0;
+let cameraY = 0;
+let targetCameraY = 0;
+
+// Персонаж — мальчик-чужестранец
+let player = {
+  x: 0, y: 0,
+  vy: 0,
+  width: 40,
+  height: 50,
+  onPlatform: null,
+  jumping: false,
+  jumpAnim: 0,
+  glowPhase: 0,
+};
+
+// Платформы
+let platforms = [];
+const PLATFORM_W = 120;
+const PLATFORM_H = 16;
+
+// Звёзды фона
+let stars = [];
+for (let i = 0; i < 200; i++) {
+  stars.push({
+    x: Math.random() * 2000,
+    y: Math.random() * 20000 - 10000,
+    r: Math.random() * 2 + 0.5,
+    speed: Math.random() * 0.3 + 0.1,
+    phase: Math.random() * Math.PI * 2,
+  });
+}
+
+// Туманности / декорации
+let nebulae = [];
+for (let i = 0; i < 15; i++) {
+  nebulae.push({
+    x: Math.random() * 2000,
+    y: Math.random() * 20000 - 10000,
+    r: Math.random() * 120 + 60,
+    color: `hsla(${Math.random()*360}, 70%, 40%, 0.08)`,
+  });
+}
+
+// Частицы
+let particles = [];
+
+// ═══════════════════════════════════════════
+//  ГЕНЕРАЦИЯ ВОПРОСОВ
+// ═══════════════════════════════════════════
+function generateQuestion() {
+  const word = VOCAB[Math.floor(Math.random() * VOCAB.length)];
+  const isQuantToOrd = Math.random() > 0.5;
+
+  let questionText, correctAnswer, allAnswers;
+
+  if (isQuantToOrd) {
+    // "Как сказать 'один' по-английски?" → one
+    questionText = `Как переводится <span class="word">"${word.ru}"</span> на английский?`;
+    correctAnswer = word.en;
+  } else {
+    // "Как переводится 'one' на русский?" → один
+    questionText = `Как переводится <span class="word">"${word.en}"</span> на русский?`;
+    correctAnswer = word.ru;
+  }
+
+  // Генерируем неправильные ответы
+  let wrongSet = new Set();
+  let pool = VOCAB.filter(w => w.en !== word.en);
+  // Перемешиваем
+  pool.sort(() => Math.random() - 0.5);
+
+  let wrongAnswers = [];
+  let idx = 0;
+  while (wrongAnswers.length < 3 && idx < pool.length) {
+    let w = pool[idx];
+    let wrong = isQuantToOrd ? w.en : w.ru;
+    if (wrong !== correctAnswer && !wrongSet.has(wrong)) {
+      wrongSet.add(wrong);
+      wrongAnswers.push(wrong);
+    }
+    idx++;
+  }
+  // Если не набрали 3, добавим заглушки
+  const fillers = isQuantToOrd
+    ? ["apple", "hello", "cat", "blue", "book"]
+    : ["яблоко", "привет", "кот", "синий", "книга"];
+  while (wrongAnswers.length < 3) {
+    let f = fillers[wrongAnswers.length % fillers.length];
+    if (f !== correctAnswer && !wrongSet.has(f)) {
+      wrongSet.add(f);
+      wrongAnswers.push(f);
+    } else {
+      wrongAnswers.push("...");
+    }
+  }
+
+  allAnswers = [correctAnswer, ...wrongAnswers];
+  allAnswers.sort(() => Math.random() - 0.5);
+
+  return { questionText, correctAnswer, allAnswers };
+}
+
+// ═══════════════════════════════════════════
+//  ПЛАТФОРМЫ
+// ═══════════════════════════════════════════
+function createPlatform(y) {
+  let x = Math.random() * (W - PLATFORM_W);
+  // Цвет зависит от высоты
+  let hue = (Math.abs(y) / 50) % 360;
+  return {
+    x: x,
+    y: y,
+    w: PLATFORM_W,
+    h: PLATFORM_H,
+    hue: hue,
+    color: `hsl(${hue}, 60%, 50%)`,
+    glow: `hsl(${hue}, 80%, 70%)`,
+  };
+}
+
+function initPlatforms() {
+  platforms = [];
+  // Начальная платформа под игроком
+  platforms.push({
+    x: W / 2 - PLATFORM_W / 2,
+    y: 0,
+    w: PLATFORM_W,
+    h: PLATFORM_H,
+    hue: 120,
+    color: 'hsl(120, 60%, 50%)',
+    glow: 'hsl(120, 80%, 70%)',
+  });
+
+  // Генерируем платформы вверх
+  for (let i = 1; i < 50; i++) {
+    let y = -i * 120 - Math.random() * 40;
+    platforms.push(createPlatform(y));
+  }
+}
+
+function addPlatformsAbove() {
+  let highest = Math.min(...platforms.map(p => p.y));
+  while (highest > cameraY - H * 2) {
+    highest -= 120 + Math.random() * 40;
+    platforms.push(createPlatform(highest));
+  }
+  // Удаляем далёкие платформы
+  platforms = platforms.filter(p => p.y < cameraY + H + 200);
+}
+
+// ═══════════════════════════════════════════
+//  ЧАСТИЦЫ
+// ═══════════════════════════════════════════
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    particles.push({
+      x: x,
+      y: y,
+      vx: (Math.random() - 0.5) * 6,
+      vy: (Math.random() - 0.5) * 6 - 2,
+      life: 1,
+      decay: Math.random() * 0.03 + 0.015,
+      r: Math.random() * 4 + 2,
+      color: color,
+    });
+  }
+}
+
+function updateParticles() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.1;
+    p.life -= p.decay;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y - cameraY, p.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ═══════════════════════════════════════════
+//  РИСОВАНИЕ
+// ═══════════════════════════════════════════
+function drawBackground() {
+  // Градиент неба
+  let grad = ctx.createLinearGradient(0, 0, 0, H);
+  let hueShift = (Math.abs(cameraY) / 200) % 60;
+  grad.addColorStop(0, `hsl(${230 + hueShift}, 40%, 8%)`);
+  grad.addColorStop(0.5, `hsl(${250 + hueShift}, 35%, 12%)`);
+  grad.addColorStop(1, `hsl(${220 + hueShift}, 30%, 15%)`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+
+  // Туманности
+  nebulae.forEach(n => {
+    let sy = n.y - cameraY * 0.3;
+    if (sy > -n.r && sy < H + n.r) {
+      ctx.fillStyle = n.color;
+      ctx.beginPath();
+      ctx.arc(n.x, sy, n.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+
+  // Звёзды
+  stars.forEach(s => {
+    let sy = ((s.y - cameraY * 0.5) % (H + 200));
+    if (sy < 0) sy += H + 200;
+    let twinkle = 0.3 + 0.7 * Math.abs(Math.sin(Date.now() * 0.001 * s.speed + s.phase));
+    ctx.globalAlpha = twinkle;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(s.x % W, sy, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+function drawPlatform(p) {
+  let sy = p.y - cameraY;
+  if (sy < -50 || sy > H + 50) return;
+
+  // Свечение
+  ctx.shadowColor = p.glow;
+  ctx.shadowBlur = 15;
+
+  // Основная платформа
+  let grad = ctx.createLinearGradient(p.x, sy, p.x + p.w, sy);
+  grad.addColorStop(0, p.color);
+  grad.addColorStop(0.5, p.glow);
+  grad.addColorStop(1, p.color);
+
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.roundRect(p.x, sy, p.w, p.h, 8);
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+
+  // Блик сверху
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.beginPath();
+  ctx.roundRect(p.x + 4, sy + 2, p.w - 8, 4, 3);
+  ctx.fill();
+}
+
+function drawPlayer() {
+  let px = player.x;
+  let py = player.y - cameraY;
+  let glow = 0.5 + 0.5 * Math.sin(Date.now() * 0.005);
+
+  ctx.save();
+  ctx.translate(px + player.width / 2, py + player.height / 2);
+
+  // Свечение вокруг
+  let glowGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 40);
+  glowGrad.addColorStop(0, `rgba(100, 200, 255, ${0.3 + glow * 0.2})`);
+  glowGrad.addColorStop(1, 'rgba(100, 200, 255, 0)');
+  ctx.fillStyle = glowGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, 40, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Тело (скафандр)
+  ctx.fillStyle = '#4a6fa5';
+  ctx.beginPath();
+  ctx.roundRect(-12, -5, 24, 28, 6);
+  ctx.fill();
+
+  // Пояс
+  ctx.fillStyle = '#ffd93d';
+  ctx.fillRect(-12, 10, 24, 4);
+
+  // Шлем (голова)
+  ctx.fillStyle = '#5b8c5a';
+  ctx.beginPath();
+  ctx.arc(0, -14, 14, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Визор
+  ctx.fillStyle = `rgba(100, 220, 255, ${0.6 + glow * 0.3})`;
+  ctx.beginPath();
+  ctx.ellipse(0, -14, 10, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Блики на визоре
+  ctx.fillStyle = 'rgba(255,255,255,0.6)';
+  ctx.beginPath();
+  ctx.ellipse(-3, -17, 3, 2, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Антенна
+  ctx.strokeStyle = '#aab';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, -28);
+  ctx.lineTo(0, -36);
+  ctx.stroke();
+
+  // Шарик антенны
+  ctx.fillStyle = `hsl(${Date.now() % 360}, 80%, 60%)`;
+  ctx.beginPath();
+  ctx.arc(0, -38, 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Руки
+  ctx.fillStyle = '#4a6fa5';
+  let armWave = Math.sin(Date.now() * 0.008) * 5;
+  // Левая рука
+  ctx.beginPath();
+  ctx.roundRect(-18, 0 + armWave, 6, 16, 3);
+  ctx.fill();
+  // Правая рука
+  ctx.beginPath();
+  ctx.roundRect(12, 0 - armWave, 6, 16, 3);
+  ctx.fill();
+
+  // Ноги
+  ctx.fillStyle = '#3a5a8a';
+  ctx.beginPath();
+  ctx.roundRect(-10, 22, 8, 12, 3);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(2, 22, 8, 12, 3);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════
+//  ИГРОВОЙ ЦИКЛ
+// ═══════════════════════════════════════════
+function update() {
+  if (!gameRunning) return;
+
+  // Камера плавно следует
+  targetCameraY = Math.min(targetCameraY, player.y - H * 0.45);
+  cameraY += (targetCameraY - cameraY) * 0.08;
+
+  // Гравитация
+  if (!player.onPlatform) {
+    player.vy += 0.5;
+    player.y += player.vy;
+  }
+
+  // Проверка приземления
+  player.onPlatform = null;
+  for (let p of platforms) {
+    if (player.vy >= 0 &&
+        player.x + player.width > p.x &&
+        player.x < p.x + p.w &&
+        player.y + player.height >= p.y &&
+        player.y + player.height <= p.y + p.h + player.vy + 5) {
+      player.y = p.y - player.height;
+      player.vy = 0;
+      player.onPlatform = p;
+      break;
+    }
+  }
+
+  // Падение = проигрыш
+  if (player.y > cameraY + H + 100) {
+    endGame();
+    return;
+  }
+
+  // Добавляем платформы
+  addPlatformsAbove();
+
+  updateParticles();
+  player.glowPhase += 0.05;
+
+  draw();
+  requestAnimationFrame(update);
+}
+
+function draw() {
+  drawBackground();
+
+  // Платформы
+  platforms.forEach(drawPlatform);
+
+  // Частицы
+  drawParticles();
+
+  // Игрок
+  drawPlayer();
+
+  // Индикатор высоты (линейка справа)
+  let rulerY = 50;
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.font = '12px monospace';
+  let meters = Math.floor(Math.abs(cameraY) / 10);
+  for (let m = 0; m < meters + 10; m += 10) {
+    let sy = -m * 10 - cameraY;
+    if (sy > 0 && sy < H) {
+      ctx.fillRect(W - 30, sy, 15, 1);
+      ctx.fillText(m + 'м', W - 28, sy - 3);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════
+//  ЛОГИКА ВОПРОСОВ
+// ═══════════════════════════════════════════
+let currentQuestion = null;
+let answering = false;
+
+function showQuestion() {
+  if (!gameRunning) return;
+  answering = true;
+
+  currentQuestion = generateQuestion();
+
+  const panel = document.getElementById('questionPanel');
+  const qText = document.getElementById('questionText');
+  const answersDiv = document.getElementById('answers');
+
+  qText.innerHTML = currentQuestion.questionText;
+  answersDiv.innerHTML = '';
+
+  currentQuestion.allAnswers.forEach((ans, i) => {
+    let btn = document.createElement('button');
+    btn.className = 'answer-btn';
+    btn.textContent = ans;
+    btn.onclick = () => handleAnswer(btn, ans);
+    answersDiv.appendChild(btn);
+  });
+
+  panel.classList.remove('hidden');
+}
+
+function handleAnswer(btn, answer) {
+  if (!answering) return;
+  answering = false;
+
+  const isCorrect = answer === currentQuestion.correctAnswer;
+  const allBtns = document.querySelectorAll('.answer-btn');
+
+  if (isCorrect) {
+    btn.classList.add('correct');
+    score++;
+    document.getElementById('scoreVal').textContent = score;
+
+    // Прыжок!
+    let jumpHeight = -150 - Math.random() * 50;
+    player.vy = jumpHeight;
+    player.onPlatform = null;
+    targetCameraY = player.y - H * 0.45;
+
+    // Частицы
+    spawnParticles(
+      player.x + player.width / 2,
+      player.y + player.height,
+      '#6bcb77',
+      20
+    );
+
+    // Новая платформа выше
+    let newY = player.y + jumpHeight - 20;
+    let newPlat = createPlatform(newY);
+    platforms.push(newPlat);
+    player.onPlatform = newPlat;
+    player.y = newPlat.y - player.height;
+    player.vy = 0;
+
+    setTimeout(() => {
+      document.getElementById('questionPanel').classList.add('hidden');
+      setTimeout(showQuestion, 600);
+    }, 600);
+
+  } else {
+    btn.classList.add('wrong');
+    // Показать правильный
+    allBtns.forEach(b => {
+      if (b.textContent === currentQuestion.correctAnswer) {
+        b.classList.add('correct');
+      }
+    });
+
+    // Падение
+    player.vy = 8;
+    player.onPlatform = null;
+
+    spawnParticles(
+      player.x + player.width / 2,
+      player.y + player.height / 2,
+      '#ff6b6b',
+      15
+    );
+
+    setTimeout(() => {
+      document.getElementById('questionPanel').classList.add('hidden');
+      endGame();
+    }, 1000);
+  }
+}
+
+// ═══════════════════════════════════════════
+//  СТАРТ / КОНЕЦ
+// ═══════════════════════════════════════════
+function startGame() {
+  document.getElementById('startScreen').style.display = 'none';
+  document.getElementById('endScreen').style.display = 'none';
+  document.getElementById('hud').style.display = 'flex';
+
+  score = 0;
+  cameraY = 0;
+  targetCameraY = 0;
+  particles = [];
+  answering = false;
+
+  player.x = W / 2 - player.width / 2;
+  player.y = -player.height;
+  player.vy = 0;
+  player.onPlatform = null;
+
+  document.getElementById('scoreVal').textContent = '0';
+  document.getElementById('heightVal').textContent = '0';
+
+  initPlatforms();
+  player.onPlatform = platforms[0];
+  player.y = platforms[0].y - player.height;
+
+  gameRunning = true;
+
+  setTimeout(showQuestion, 500);
+  update();
+
+  // Обновление высоты
+  setInterval(() => {
+    if (gameRunning) {
+      let h = Math.floor(Math.abs(cameraY) / 10);
+      document.getElementById('heightVal').textContent = h;
+    }
+  }, 200);
+}
+
+function endGame() {
+  gameRunning = false;
+  document.getElementById('questionPanel').classList.add('hidden');
+
+  let height = Math.floor(Math.abs(cameraY) / 10);
+  document.getElementById('finalScore').textContent = `⭐ ${score} правильных ответов`;
+  document.getElementById('finalHeight').textContent = `📏 Высота: ${height} м`;
+
+  let msg = '';
+  if (score === 0) msg = 'Попробуй ещё раз! У тебя получится! 💪';
+  else if (score < 5) msg = 'Неплохое начало! Продолжай учить слова! 📚';
+  else if (score < 10) msg = 'Хороший результат! Ты растёшь! 🌱';
+  else if (score < 20) msg = 'Отлично! Ты настоящий знаток чисел! 🧠';
+  else msg = 'Невероятно! Ты покорил космос слов! 🚀🏆';
+
+  document.getElementById('endMessage').textContent = msg;
+
+  setTimeout(() => {
+    document.getElementById('endScreen').style.display = 'flex';
+  }, 800);
+}
+
+// ═══════════════════════════════════════════
+//  ФОНОВЫЕ ЗВЁЗДЫ (DOM)
+// ═══════════════════════════════════════════
+function createStars() {
+  for (let i = 0; i < 50; i++) {
+    let star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.width = star.style.height = Math.random() * 3 + 1 + 'px';
+    star.style.setProperty('--dur', (Math.random() * 3 + 1) + 's');
+    document.body.appendChild(star);
+  }
+}
+createStars();
+</script>
+</body>
+</html>
